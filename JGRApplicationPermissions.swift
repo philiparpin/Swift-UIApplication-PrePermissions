@@ -41,20 +41,9 @@ class JGRApplicationPermissions: NSObject {
         return Static.instance!
     }
     
-    //Initialiser
-    override init() {
-        println("Init called")
-        super.init()
-    }
-    
     //Properties
     private var calendarCallback: ((state: JGRApplicationPermissionCallback) -> Void)?
-//    private var calendarAlertView: UIAlertController?
-//    private var cameraAlertView: UIAlertController?
-//    private var contactsAlertView: UIAlertController?
-//    private var locationAlertView: UIAlertController?
-//    private var photosAlertView: UIAlertController?
-//    private var remindersAlertView: UIAlertController?
+    private var remindersCallback: ((state: JGRApplicationPermissionCallback) -> Void)?
     
     //Private Methods
     private func configureAlertWithTitle(title: String?, message: String?, denyButtonTitle: String?, grantButtonTitle: String?, completionCallback:(state: JGRApplicationPermissionCallback) -> Void, grantActionClosure:() -> Void) -> UIAlertController {
@@ -100,6 +89,31 @@ class JGRApplicationPermissions: NSObject {
         }
     }
     
+    func showRemindersPermissions(title: String?, message: String?, denyButtonTitle: String?, grantButtonTitle: String?, completionClosure: (state: JGRApplicationPermissionCallback) -> Void) {
+        
+        switch hasRemindersAccess() {
+        case .Granted:
+            completionClosure(state: .NoAction)
+        case .Denied:
+            completionClosure(state: .Denied)
+        case .Restricted:
+            completionClosure(state: .Denied)
+        default:
+            var alertTitle = (title != nil) ? title : "Access Reminders?";
+            var alertBody = (message != nil) ? message : "The current app is requesting access to your Reminders. Do you want to provide it access?"
+            var alertDeny = (denyButtonTitle != nil) ? denyButtonTitle : "Not Now"
+            var alertGrant = (grantButtonTitle != nil) ? grantButtonTitle : "Give Access"
+            
+            remindersCallback = completionClosure;
+            
+            let calendarAlertView = configureAlertWithTitle(alertTitle, message: alertBody, denyButtonTitle: alertDeny, grantButtonTitle: alertGrant, completionCallback: completionClosure, grantActionClosure: { () -> Void in
+                self.requestSystemPermissionForCalendar()
+            });
+            
+            UIApplication.sharedApplication().keyWindow.rootViewController .presentViewController(calendarAlertView, animated: true, completion: nil);
+        }
+    }
+    
     //Permission Checks
     private func hasCalendarAccess() -> JGRApplicationSystemAccessState {
         switch EKEventStore.authorizationStatusForEntityType(EKEntityTypeEvent) {
@@ -114,11 +128,31 @@ class JGRApplicationPermissions: NSObject {
         }
     }
     
+    private func hasRemindersAccess() -> JGRApplicationSystemAccessState {
+        switch EKEventStore.authorizationStatusForEntityType(EKEntityTypeReminder) {
+        case .Authorized:
+            return JGRApplicationSystemAccessState.Granted
+        case .Denied:
+            return JGRApplicationSystemAccessState.Denied
+        case .Restricted:
+            return JGRApplicationSystemAccessState.Restricted
+        case .NotDetermined:
+            return JGRApplicationSystemAccessState.Unknown
+        }
+    }
+    
     //Request Permission Dialogs
-    private func requestSystemPermissionForCalendar() {
+    private func requestSystemPermissionForCalendar() { //Calendar
         let eventStore = EKEventStore();
         eventStore.requestAccessToEntityType(EKEntityTypeEvent, completion: {(granted: Bool, error: NSError!) in
             (granted) ? self.calendarCallback!(state: JGRApplicationPermissionCallback.Granted) : self.calendarCallback!(state: JGRApplicationPermissionCallback.Denied)
+        })
+    }
+    
+    private func requestSystemPermissionForReminders() { //Reminders
+        let eventStore = EKEventStore();
+        eventStore.requestAccessToEntityType(EKEntityTypeReminder, completion: {(granted: Bool, error: NSError!) in
+            (granted) ? self.remindersCallback!(state: JGRApplicationPermissionCallback.Granted) : self.remindersCallback!(state: JGRApplicationPermissionCallback.Denied)
         })
     }
     
