@@ -332,7 +332,7 @@ class JGRApplicationPermissions: NSObject, CLLocationManagerDelegate {
     //Location Manager Delegate
     func locationManager(manager: CLLocationManager!, didChangeAuthorizationStatus status: CLAuthorizationStatus) {
         self.locationManager.stopUpdatingLocation()
-        (status == CLAuthorizationStatus.Authorized) ? self.contactsCallback!(state: JGRApplicationPermissionCallback.Granted) : self.contactsCallback!(state: JGRApplicationPermissionCallback.Denied)
+        (status == CLAuthorizationStatus.Authorized) ? self.locationCallback!(state: JGRApplicationPermissionCallback.Granted) : self.locationCallback!(state: JGRApplicationPermissionCallback.Denied)
     }
     
     
